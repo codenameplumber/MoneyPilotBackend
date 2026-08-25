@@ -1,0 +1,6 @@
+2026/08/25-10:29:28.680 4354 Reusing MANIFEST C:\Users\Dell\Desktop\Competitions\moneypilot-app\storage\.shot-profile\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
+2026/08/25-10:29:28.682 4354 Recovering log #32
+2026/08/25-10:29:28.746 4354 Reusing old log C:\Users\Dell\Desktop\Competitions\moneypilot-app\storage\.shot-profile\Default\EdgeCoupons/coupons_data.db/000032.log 
+2026/08/25-10:29:31.212 9554 Level-0 table #37: started
+2026/08/25-10:29:31.220 9554 Level-0 table #37: 683399 bytes OK
+2026/08/25-10:29:31.222 9554 Delete type=0 #32
