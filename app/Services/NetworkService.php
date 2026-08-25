@@ -145,62 +145,84 @@ class NetworkService
         $asOf = $asOf ?? time();
 
         /*
-         * Deliberately NOT cached.
+         * Deliberately NOT cached, and deliberately in two passes.
          *
-         * The result carries Eloquent models so a moderator can act on the row
-         * in front of them, and a serialised model comes back from the cache as
-         * an incomplete object. It is also the fastest query on this page — a
-         * single grouped read — so caching it would trade correctness for
-         * nothing.
+         * Not cached because the result carries Eloquent models so a moderator
+         * can act on the row in front of them, and a serialised model comes
+         * back from the cache as an incomplete object.
+         *
+         * Two passes because of what the shape of the work actually is. Finding
+         * the outliers needs the price of every report in the window — a few
+         * thousand rows — but the moderator only ever sees the eighty or so
+         * that are outliers. Hydrating all of them as models with three eager
+         * relations cost most of a second on this page; reading raw prices and
+         * then hydrating only the flagged ones is the same answer for a
+         * fraction of the work.
          */
-        $build = function () use ($asOf) {
-                $rows = PriceReport::with(['item', 'location', 'market'])
-                    ->where('reported_at', '>=', date('Y-m-d H:i:s', $asOf - 30 * 86400))
-                    ->where('status', '!=', 'rejected')
-                    ->get()
-                    ->groupBy(fn ($r) => $r->item_id . '|' . $r->location_id);
+        $since = date('Y-m-d H:i:s', $asOf - 30 * 86400);
 
-                $out = [];
+        $groups = DB::table('price_reports')
+            ->where('reported_at', '>=', $since)
+            ->where('status', '!=', 'rejected')
+            ->select('id', 'item_id', 'location_id', 'price', 'reported_at')
+            ->get()
+            ->groupBy(fn ($r) => $r->item_id . '|' . $r->location_id);
 
-                foreach ($rows as $pool) {
-                    if ($pool->count() < 4) {
-                        continue;
-                    }
+        $verdicts = [];
 
-                    $values = $pool->pluck('price')->map(fn ($p) => (int) $p)->all();
-                    $med    = TruePrice::median($values);
-                    $dev    = TruePrice::mad($values, $med);
-                    $band   = $dev > 0 ? 2.5 * $dev : max($med * 0.45, 1);
+        foreach ($groups as $pool) {
+            if ($pool->count() < 4) {
+                continue;
+            }
 
-                    foreach ($pool as $r) {
-                        $delta = $r->price - $med;
-                        if (abs($delta) <= $band) {
-                            continue;
-                        }
+            $values = $pool->pluck('price')->map(fn ($p) => (int) $p)->all();
+            $med    = TruePrice::median($values);
+            $dev    = TruePrice::mad($values, $med);
+            $band   = $dev > 0 ? 2.5 * $dev : max($med * 0.45, 1);
 
-                        $ratio = $med ? $r->price / $med : 0;
+            foreach ($pool as $r) {
+                $delta = (int) $r->price - $med;
 
-                        $out[] = [
-                            'report'  => $r,
-                            'median'  => $med,
-                            'delta'   => $delta,
-                            'ratio'   => $ratio,
-                            'ageDays' => (int) round(($asOf - $r->reported_at->getTimestamp()) / 86400),
-                            'peers'   => $pool->count(),
-                            // A 10× miss is almost always a typed zero;
-                            // a 2× miss might be a real market move.
-                            'verdict' => abs($ratio) >= 5 ? 'likely-typo'
-                                : (abs($delta) / max(1, $med) > 0.6 ? 'suspect' : 'borderline'),
-                        ];
-                    }
+                if (abs($delta) <= $band) {
+                    continue;
                 }
 
-                usort($out, fn ($a, $b) => abs($b['ratio'] - 1) <=> abs($a['ratio'] - 1));
+                $ratio = $med ? $r->price / $med : 0;
 
-                return $out;
-        };
+                $verdicts[$r->id] = [
+                    'median'  => $med,
+                    'delta'   => $delta,
+                    'ratio'   => $ratio,
+                    'ageDays' => (int) round(($asOf - strtotime($r->reported_at)) / 86400),
+                    'peers'   => $pool->count(),
+                    // A 10× miss is almost always a typed zero;
+                    // a 2× miss might be a real market move.
+                    'verdict' => abs($ratio) >= 5 ? 'likely-typo'
+                        : (abs($delta) / max(1, $med) > 0.6 ? 'suspect' : 'borderline'),
+                ];
+            }
+        }
 
-        return $build();
+        if (! $verdicts) {
+            return [];
+        }
+
+        $reports = PriceReport::with(['item', 'location', 'market'])
+            ->whereIn('id', array_keys($verdicts))
+            ->get()
+            ->keyBy('id');
+
+        $out = [];
+
+        foreach ($verdicts as $id => $v) {
+            if ($report = $reports->get($id)) {
+                $out[] = ['report' => $report] + $v;
+            }
+        }
+
+        usort($out, fn ($a, $b) => abs($b['ratio'] - 1) <=> abs($a['ratio'] - 1));
+
+        return $out;
     }
 
     public function forgetCaches(): void
