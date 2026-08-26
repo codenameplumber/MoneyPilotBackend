@@ -15,14 +15,25 @@ median prices in your own LGA**, and then tells you what is genuinely possible �
 including, when it is true, that nothing is.
 
 ```
-Same household. Same ₦260,000 income.
-  Ikeja      ₦225,794 a month just to survive
-  Nsukka     ₦163,559
-  Difference ₦62,236 — about 38%
+Same household of four. Same ₦260,000 income.
+  Ikeja      ₦226,006 a month just to survive
+  Nsukka     ₦161,810
+  Difference ₦64,196 — about 40%
 ```
 
 A budget that splits income by a fixed percentage cannot see that, and gets one
 of them badly wrong.
+
+---
+
+## Submission pack
+
+| Document | What it covers |
+| --- | --- |
+| [**Submission**](https://claude.ai/code/artifact/ccf62d9e-c421-4e76-81e4-3383ab0626cf) | All eight AI BuildFest requirements, with figures read from the running system |
+| [**Technical overview**](https://claude.ai/code/artifact/ea0fc814-db79-4321-9a0c-6495471d82d7) | TruePrice, the survival floor, the allocator, the AI seam, and what is not done |
+| [**Demo logins**](https://claude.ai/code/artifact/3bd11c7b-bba8-46ba-b6e3-d8a6b602b492) | Ten accounts, each with its real position and what it demonstrates |
+| [`DEPLOY.md`](DEPLOY.md) | Laravel Cloud: queues, workers, scheduler, mail, keys |
 
 ---
 
@@ -38,24 +49,41 @@ php artisan key:generate
 # Create the database, then point .env at it:
 #   DB_DATABASE=moneypilot  DB_USERNAME=root  DB_PASSWORD=
 
-php artisan migrate:fresh --seed     # ~25s: corpus, medians, demo cohort
+php artisan migrate:fresh --seed     # ~80s: corpus, medians, 122 members, activity
 php artisan serve
 ```
 
-Open <http://127.0.0.1:8000> and sign in. Four demo accounts, password
-`moneypilot` — and it is genuinely checked, hashed server-side, rate-limited
-after five failures:
+Open <http://127.0.0.1:8000> and sign in. **Ten demo accounts, all with the
+password `moneypilot`** — genuinely checked, hashed server-side, rate-limited
+after five failures. Each one is a real row that the engine built a real budget
+for; whether a month balances is something it worked out, not a field:
 
-| Account | Role | Why it is worth opening |
-| --- | --- | --- |
-| `chidi@student.unilag.ng` | Member | Feasible but tight. Laptop fund mid-flight, live rice price shock. |
-| `amaka.eze@gmail.com` | Member | **Her month does not add up.** The trade-off engine doing real work. |
-| `a.okafor@moneypilot.ng` | Operations | Moderation queue, coverage grid, contributor trust. |
-| `t.bakare@moneypilot.ng` | Owner | Is MoneyPilot working? |
+| Account | Where | Opens on | Worth seeing |
+| --- | --- | --- | --- |
+| `chidi@student.unilag.ng` | Lagos Mainland, 1 | **balances**, ₦5.1k slack | Start here. Tight but working; rice is up 10% near him. |
+| `amaka.eze@gmail.com` | Ikeja, 4 | **short** ₦100k | The headline demo — costed trade-offs, goal offered last. |
+| `aisha.eze55@example.ng` | Ikeja, 5 | **short** ₦297k | The floor alone is 3.4x her income. No option closes it, and it says so. |
+| `ife.lawal2@example.ng` | Kano Municipal, 5 | **short** ₦714 | Misses by seven hundred naira. Also 8 of 27 items widen to a national average - all labelled. |
+| `sadiq.chukwu58@example.ng` | Nsukka, 5 | **short** ₦6.3k | One trade-off closes it. Best account for pressing **Apply**. |
+| `idris.nwosu21@example.ng` | Kano Municipal, 4 | **short** ₦60k | Goal pressure, not the floor: ₦92k/mo saving on ₦312k. |
+| `bisi.bello7@example.ng` | Ikeja, 2 | **balances** by ₦2.1k | Knife-edge. |
+| `gbenga.obi33@example.ng` | Nsukka, 2 | **balances**, ₦271k slack | What comfortable looks like. Open right after Bisi. |
+| `a.okafor@moneypilot.ng` | Operations | console | 86 flagged reports, coverage grid, contributor standing. |
+| `t.bakare@moneypilot.ng` | Owner | owner dashboard | 62 of 122 members told, honestly, that they are short. |
+
+Try signing in as Adaeze and visiting `/console/business` — 403. Access is a
+server-side gate, not a hidden link.
 
 ```bash
-php artisan test          # 88 tests, 308 assertions
+php artisan demo:reset   # restores these accounts to a clean state before a demo
+```
+
+```bash
+php artisan test           # 135 tests, 739 assertions
 php artisan prices:refresh # recompute every median (also scheduled hourly)
+php artisan perf --warm    # time every screen, count its queries
+php artisan mail:check     # send one of each email for real
+php artisan ai:check       # verify the OpenAI key against the real API
 ```
 
 ---
@@ -93,7 +121,7 @@ costed options ranked by naira recovered against how much each one actually
 hurts:
 
 ```
-Amaka is short ₦99,461 this month.
+Amaka is short ₦99,672 this month.
 
   Give "Emergency fund" 12 more months     +₦31,111   closes 31% of the gap
   Cut 4 trips out of the month              +₦4,000   closes  4%
@@ -113,9 +141,10 @@ Chidi's month balances, so his list is about doing better rather than coping —
 and it draws on the other half of the engine:
 
 ```
-  Shop at Oyingbo Market                    +₦8,630
+  Shop at Oyingbo Market                    +₦7,042
   Swap some rice for garri                  +₦4,410   ← rice is up 10% near him
   Cut 4 trips out of the month              +₦3,520
+  Give "Laptop fund" 1 more month           +₦1,255
 ```
 
 ### The assistant computes, then a model phrases
@@ -131,8 +160,10 @@ so it cannot decide anything, and any rewrite that drops or alters a naira
 figure is discarded in favour of the engine's own wording.
 
 Leave `OPENAI_API_KEY` blank and nothing about the answers changes — only how
-they are worded. `tests/Feature/LanguageModelTest.php` holds all of that to
-account with a faked API.
+they are worded. **16 tests** hold that to account against a faked API, including
+one asserting the question never appears in the request body, and one that
+discards a rewrite which *invents* a figure — the more dangerous direction,
+since that is money the engine never authorised, in the engine's voice.
 
 ### The health check finds the thing a pie chart cannot
 
@@ -159,7 +190,7 @@ app/Domain/       pure engine — no Eloquent, no request, no container
                   Money · TruePrice · Basket · Allocator · Goals
                   Categories · Statement · HealthCheck · Prng
 app/Services/     the only classes that know both the engine and the database
-                  PriceService · BudgetService · TradeoffService
+                  PriceService · BudgetService · TradeoffService · InsightService
                   CoachService · PlanService · NetworkService · OpenAiService
 app/Livewire/     screens. They ask and arrange; they never compute.
 ```
