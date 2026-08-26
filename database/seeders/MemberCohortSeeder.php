@@ -72,7 +72,9 @@ class MemberCohortSeeder extends Seeder
     public function run(): void
     {
         $r         = Prng::seeded('cohort', 'v1');
-        $locations = Location::all();
+        // Explicitly ordered. Without it the row order is whatever MySQL
+        // returns, and which member lives where stops being reproducible.
+        $locations = Location::orderBy('id')->get();
         $items     = Item::pluck('id', 'slug');
         $budgets   = app(BudgetService::class);
 
@@ -184,7 +186,7 @@ class MemberCohortSeeder extends Seeder
                 ]);
             }
 
-            $this->spendFor($user, $r, $items);
+            $this->spendFor($user, $items);
 
             // The engine decides whether this month balances. Nothing sets it.
             $budget = $budgets->rebuild($user->fresh());
@@ -199,9 +201,23 @@ class MemberCohortSeeder extends Seeder
         ));
     }
 
-    /** A fortnight of plausible spending, so pace figures mean something. */
-    private function spendFor(User $user, Prng $r, $items): void
+    /**
+     * Spending so far this month, so pace figures mean something.
+     *
+     * Takes its OWN generator, seeded per member, and this is not tidiness.
+     *
+     * The loop below runs once per day elapsed this month, drawing from the
+     * generator each time — so sharing the cohort's stream made the number of
+     * draws consumed depend on today's date. Seeding on the 26th advanced the
+     * stream eight steps further than the 25th, which changed every subsequent
+     * member's surname, income and household. A seeder whose output moves with
+     * the calendar is not deterministic, whatever its docblock claims, and it
+     * silently invalidated a published sheet of demo logins.
+     */
+    private function spendFor(User $user, $items): void
     {
+        $r = Prng::seeded('cohort-spend', (string) $user->id);
+
         $user->transactions()->delete();
 
         $patterns = [
@@ -229,7 +245,9 @@ class MemberCohortSeeder extends Seeder
                 }
                 $rows[] = [
                     'user_id'     => $user->id,
-                    'occurred_at' => $now->copy()->subDays($d)->setTime(8 + (int) floor($r->next() * 12), 0),
+                    // Clamped to now — see ActivitySeeder: an unclamped hour
+                    // on today's date reads as spending that has not happened.
+                    'occurred_at' => $now->copy()->subDays($d)->setTime(8 + (int) floor($r->next() * 12), 0)->min($now->copy()),
                     'amount'      => $amount,
                     'category'    => $category,
                     'item_id'     => $slug ? ($items[$slug] ?? null) : null,

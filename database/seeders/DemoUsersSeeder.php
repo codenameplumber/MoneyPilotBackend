@@ -180,7 +180,9 @@ class DemoUsersSeeder extends Seeder
 
                 $rows[] = [
                     'user_id'     => $user->id,
-                    'occurred_at' => $now->copy()->subDays($d)->setTime((int) floor($r->next() * 12 + 8), 0),
+                    // Clamped to now — see ActivitySeeder: an unclamped hour
+                    // on today's date reads as spending that has not happened.
+                    'occurred_at' => $now->copy()->subDays($d)->setTime((int) floor($r->next() * 12 + 8), 0)->min($now->copy()),
                     'amount'      => $amount,
                     'category'    => $category,
                     'item_id'     => $slug ? ($itemIds[$slug] ?? null) : null,
