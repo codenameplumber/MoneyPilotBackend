@@ -25,3 +25,19 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# --- Browser artefacts from tools/ ----------------------------------------
+# tools/shots.mjs and tools/console-check.mjs each drive a headless Edge, and
+# Edge writes a full browser profile wherever it is pointed: caches, LevelDB
+# shards, Crashpad dumps. 839 files and 70MB of it were committed, which is
+# most of why .git is 48MB and why `git status` was unreadable - every
+# screenshot run churned another ~200 binary files.
+#
+# Both directories are rebuilt from nothing on the next run.
+/.pdf-profile
+/storage/.shot-profile
+
+# Screenshots are build output, not source: 22 binaries that change on every
+# run and cannot be reviewed in a diff. Regenerate with:
+#   node tools/shots.mjs <email>
+/storage/shots
