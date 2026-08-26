@@ -112,6 +112,50 @@ class ScaleTest extends SeededTestCase
             'reputation has to be seen being earned from zero');
     }
 
+    /**
+     * The cohort must not move with the calendar.
+     *
+     * It did. spendFor() shared the cohort generator and looped once per day
+     * elapsed this month, so seeding on the 26th consumed eight more draws per
+     * member than the 25th — silently changing every subsequent member's
+     * surname, income and household. A published sheet of demo logins stopped
+     * matching the database overnight.
+     *
+     * This pins the identities a demo depends on.
+     */
+    public function test_the_cohort_is_reproducible_and_does_not_drift_with_the_date(): void
+    {
+        $members = User::where('email', 'like', '%@example.ng')->orderBy('id')->get();
+
+        $this->assertCount(120, $members);
+
+        // A fixed point: the first surname is the generator's first draw, so if
+        // the stream shifts by even one step this breaks.
+        $this->assertSame('ada.ibrahim1@example.ng', $members[0]->email);
+        $this->assertSame('Ada Ibrahim', $members[0]->name);
+
+        foreach ($members as $i => $u) {
+            $first = mb_strtolower(explode(' ', $u->name)[0]);
+
+            $this->assertStringStartsWith($first . '.', $u->email,
+                "member {$i} has an email that does not match its name");
+            $this->assertStringEndsWith(($i + 1) . '@example.ng', $u->email);
+        }
+    }
+
+    /** Every account on the demo sheet has to actually open. */
+    public function test_seeded_members_accept_the_documented_password(): void
+    {
+        $sample = User::where('role', 'member')->orderBy('id')->limit(25)->get();
+
+        foreach ($sample as $u) {
+            $this->assertTrue(
+                \Illuminate\Support\Facades\Hash::check('moneypilot', $u->password),
+                "{$u->email} does not accept the documented password",
+            );
+        }
+    }
+
     /* ---------------- no N+1 ---------------- */
 
     /**

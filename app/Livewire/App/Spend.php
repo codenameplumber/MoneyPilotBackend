@@ -64,6 +64,33 @@ class Spend extends Component
         $this->reset('amount', 'note', 'itemSlug');
     }
 
+    /**
+     * The entry awaiting confirmation, if any.
+     *
+     * A reversal is permanent — it writes a second row that can never be taken
+     * back — so it gets a sheet that names the entry and the amount rather than
+     * happening on a stray tap next to the amount the member just typed.
+     */
+    public ?int $confirming = null;
+
+    public function askReverse(int $id): void
+    {
+        $this->confirming = $id;
+    }
+
+    public function cancelReverse(): void
+    {
+        $this->confirming = null;
+    }
+
+    public function confirmReverse(): void
+    {
+        if ($this->confirming !== null) {
+            $this->reverse($this->confirming);
+            $this->confirming = null;
+        }
+    }
+
     /** Correct an entry by reversing it, not by rewriting history. */
     public function reverse(int $id): void
     {
@@ -134,6 +161,9 @@ class Spend extends Component
             'reversed'   => $reversed,
             'categories' => Categories::LIVING,
             'items'      => Item::orderBy('label')->get(['slug', 'label']),
+            'pending'    => $this->confirming
+                ? $transactions->firstWhere('id', $this->confirming)
+                : null,
             'monthTotal' => $monthTotal,
         ])->layoutData([
             'page'  => 'spend',

@@ -69,6 +69,53 @@ class SpendTest extends SeededTestCase
         $this->assertSame(0, $original->amount + $reversal->amount, 'the pair must net to nothing');
     }
 
+    /**
+     * A reversal writes a permanent second row, so it does not happen on a
+     * stray tap next to the amount somebody just typed.
+     */
+    public function test_reversing_asks_first_and_cancelling_changes_nothing(): void
+    {
+        $user = $this->member();
+
+        Livewire::actingAs($user)->test(Spend::class)
+            ->set('amount', '3,000')->set('category', 'food')->set('note', 'Careful now')
+            ->call('log');
+
+        $tx     = $user->transactions()->latest('id')->first();
+        $before = Transaction::count();
+
+        Livewire::actingAs($user)->test(Spend::class)
+            ->call('askReverse', $tx->id)
+            ->assertSet('confirming', $tx->id)
+            ->assertSee('Reverse this entry?')
+            ->assertSee('Careful now')
+            ->call('cancelReverse')
+            ->assertSet('confirming', null)
+            ->assertDontSee('Reverse this entry?');
+
+        $this->assertSame($before, Transaction::count(), 'cancelling must write nothing');
+    }
+
+    public function test_confirming_the_sheet_writes_the_reversal(): void
+    {
+        $user = $this->member();
+
+        Livewire::actingAs($user)->test(Spend::class)
+            ->set('amount', '7,500')->set('category', 'social')->call('log');
+
+        $tx = $user->transactions()->latest('id')->first();
+
+        Livewire::actingAs($user)->test(Spend::class)
+            ->call('askReverse', $tx->id)
+            ->call('confirmReverse')
+            ->assertSet('confirming', null);
+
+        $this->assertSame(
+            -$tx->amount,
+            (int) Transaction::where('reverses_id', $tx->id)->value('amount'),
+        );
+    }
+
     public function test_an_entry_cannot_be_reversed_twice(): void
     {
         $user = $this->member();
