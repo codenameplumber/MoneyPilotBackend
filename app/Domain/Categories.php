@@ -66,11 +66,33 @@ final class Categories
         return $out;
     }
 
+    /**
+     * A category is "over" by more than rounding before it is called over.
+     *
+     * Without this band a member ₦10 past a ₦949 airtime allocation got the
+     * same blood-red bar and the same words as one ₦2,032 past a ₦633 one. On
+     * a real dashboard that put five of seven rows in crit, and a screen where
+     * most rows scream teaches people to stop reading the screaming.
+     *
+     * Proportional rather than a flat naira floor, so it means the same thing
+     * to a ₦900 allocation and a ₦90,000 one.
+     */
+    private const OVERSPEND_TOLERANCE = 0.02;
+
     /** Category health for a meter. Status is a LABEL as well as a colour. */
     public static function health(int $allocated, int $spent): array
     {
         if ($allocated === 0) return ['state' => 'quiet', 'label' => 'Not budgeted'];
-        if ($spent > $allocated) return ['state' => 'crit', 'label' => 'Over budget'];
+
+        if ($spent > $allocated) {
+            return $spent - $allocated > $allocated * self::OVERSPEND_TOLERANCE
+                ? ['state' => 'crit', 'label' => 'Over budget']
+                : ['state' => 'warn', 'label' => 'Just over'];
+        }
+
+        // Nothing spent is not the same claim as underspending. A utility bill
+        // that has not arrived yet should not be congratulated.
+        if ($spent === 0) return ['state' => 'quiet', 'label' => 'Nothing spent yet'];
 
         $r = Money::ratio($spent, $allocated);
         if ($r >= 0.85) return ['state' => 'warn', 'label' => 'Nearly spent'];

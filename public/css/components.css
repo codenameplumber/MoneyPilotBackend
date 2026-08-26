@@ -786,3 +786,34 @@ figure.photo figcaption { font-size: var(--t-xs); color: var(--text-3); line-hei
   text-overflow: ellipsis;
 }
 .prov-1 > span { display: inline; }
+
+/* Donut — server-rendered, so it needs no sizing from script. */
+.donut { display: block; flex: none; }
+.donut circle { transition: opacity var(--fast); }
+.donut:hover circle { opacity: .82; }
+.donut circle:hover { opacity: 1; }
+
+/* --- Dashboard hero, short-month branch ----------------------------------
+   A member whose month does not balance still has to get through today. The
+   shortfall is the headline; this is the figure underneath it that can
+   actually be acted on, set apart so the two are never misread as one number.
+   Quiet by construction — it must not compete with the red figure above. */
+.hero-split {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+.hero-split-fig {
+  font-family: var(--mono);
+  font-size: var(--t-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+}
+.hero-split-fig span {
+  font-size: var(--t-sm); font-weight: 400; color: var(--text-3); margin-left: 2px;
+}
