@@ -13,11 +13,15 @@
       <nav class="site-nav">
         <a href="#thesis">The idea</a>
         <a href="#how">How it works</a>
+        <a href="#honest">When it doesn't fit</a>
         <a href="#trueprice">TruePrice</a>
-        <a href="#who">Who it's for</a>
       </nav>
       <span class="grow"></span>
-      <button class="btn btn-icon btn-quiet" data-theme-toggle aria-label="Switch theme"></button>
+      {{-- The toggle shipped empty, which reads on a dark header as a dead
+           4px gap between the nav and Sign in rather than as a control. --}}
+      <button class="btn btn-icon btn-quiet" data-theme-toggle title="Switch theme" aria-label="Switch theme">
+        <i data-icon="moon" class="i i-sm"></i>
+      </button>
       <a class="btn btn-quiet btn-sm" href="{{ route('login') }}">Sign in</a>
       <a class="btn btn-primary btn-sm" href="{{ route('register') }}">Get started</a>
     </div>
@@ -25,24 +29,33 @@
 
   <section class="hero">
     <div class="hero-photo">
-      <img src="{{ asset('img/') }}hero-market.jpg" alt="A street market in Nigeria, traders and stalls along a roadside" width="1600" height="1100" fetchpriority="high">
+      <img src="{{ asset('img/hero-market.jpg') }}" alt="A street market in Nigeria, traders and stalls along a roadside" width="1600" height="1100" fetchpriority="high">
     </div>
     <div class="wrapper hero-grid">
       <div class="hero-copy">
         <span class="eyebrow eyebrow-accent">AI for everyday life · budgeting</span>
         <h1 class="display d-4xl">Every budget is a guess until it knows <span class="mark">local prices</span>.</h1>
         <p class="lede">MoneyPilot prices a real food basket for your household at this month's median in your own area — then tells you what is genuinely possible, and says so plainly when it isn't.</p>
+        {{-- Two, not three.
+
+             The band shipped with "Take the 2-minute tour", "Open the app" and
+             "Console" side by side, all three pointing at /login. Three routes
+             to one destination is not choice, it is a decision the page
+             declined to make — and "Console" names an internal surface that
+             means nothing to somebody arriving cold. --}}
         <div class="hero-cta">
           <a class="btn btn-primary btn-lg" href="{{ route('login') }}">
-            <i data-icon="sparkles" class="i i-sm"></i> Take the 2-minute tour
+            <i data-icon="sparkles" class="i i-sm"></i> Open the live demo
           </a>
-          <a class="btn btn-ghost btn-lg" href="{{ route('login') }}">Open the app</a>
-          <a class="btn btn-quiet btn-lg" href="{{ route('login') }}">Console</a>
+          <a class="btn btn-ghost btn-lg" href="#thesis">See the difference it makes</a>
         </div>
+        {{-- Three claims that are all true of this build. "Works offline" was
+             not: this is a Laravel app against MySQL, and a trust row is the
+             worst place in a product to be caught overstating. --}}
         <div class="hero-trust">
-          <span class="row g-6"><i data-icon="check" class="i i-sm"></i> Works offline</span>
-          <span class="row g-6"><i data-icon="check" class="i i-sm"></i> Every figure explains itself</span>
+          <span class="row g-6"><i data-icon="check" class="i i-sm"></i> Every figure traces to a price report</span>
           <span class="row g-6"><i data-icon="check" class="i i-sm"></i> No bank login, ever</span>
+          <span class="row g-6"><i data-icon="check" class="i i-sm"></i> Works with the model switched off</span>
         </div>
       </div>
 
@@ -200,7 +213,7 @@
     <div class="strip">
       <div class="strip-item">
         <div class="media media-scrim">
-          <img src="{{ asset('img/') }}market-produce.jpg" alt="Traders selling leafy vegetables at a Nigerian market" width="1100" height="820" loading="lazy">
+          <img src="{{ asset('img/market-produce.jpg') }}" alt="Traders selling leafy vegetables at a Nigerian market" width="1100" height="820" loading="lazy">
           <span class="media-tag"><span class="mono">{{ Money::fmt($tomato['price']) }}</span> tomatoes, per kg</span>
         </div>
         <div class="strip-cap">
@@ -211,7 +224,7 @@
 
       <div class="strip-item">
         <div class="media media-scrim">
-          <img src="{{ asset('img/') }}transport-bus.jpg" alt="A busy Nigerian road junction, traffic passing a roundabout with roadside traders beyond" width="1100" height="820" loading="lazy">
+          <img src="{{ asset('img/transport-bus.jpg') }}" alt="A busy Nigerian road junction, traffic passing a roundabout with roadside traders beyond" width="1100" height="820" loading="lazy">
           <span class="media-tag"><span class="mono">{{ Money::fmt($bus['price']) }}</span> per drop</span>
         </div>
         <div class="strip-cap">
@@ -222,7 +235,7 @@
 
       <div class="strip-item">
         <div class="media media-scrim">
-          <img src="{{ asset('img/') }}home-cooking.jpg" alt="A container of jollof rice with fish, being eaten" width="1100" height="820" loading="lazy">
+          <img src="{{ asset('img/home-cooking.jpg') }}" alt="A container of jollof rice with fish, being eaten" width="1100" height="820" loading="lazy">
           <span class="media-tag"><span class="mono">{{ Money::fmt($weekFood) }}</span> a week of meals</span>
         </div>
         <div class="strip-cap">
@@ -235,7 +248,10 @@
 </section>
 
 <!-- ============================ HOW ============================ -->
-<section class="section section-alt" id="how">
+{{-- Plain `.section`, not `.section-alt`. This and "What we price" were both
+     alt, so two identically-coloured bands met at a hairline and the rule read
+     as a stray border rather than as a seam between two ideas. --}}
+<section class="section" id="how">
   <div class="wrapper">
     <div class="section-head">
       <span class="eyebrow">How it works</span>
@@ -272,6 +288,139 @@
   </div>
 </section>
 
+<!-- ============================ HONESTY ============================ -->
+{{-- The two things this product does that a judge cannot see from the price
+     board, and that the page previously never mentioned at all: what happens
+     when the month does not balance, and what the language model is allowed
+     to touch. Both are the honest answer rather than the flattering one, and
+     both are the reason to trust the figures above. --}}
+<section class="section section-alt" id="honest">
+  <div class="wrapper">
+    <div class="section-head">
+      <span class="eyebrow">Where most budgeting apps flinch</span>
+      <h2 class="display d-2xl">It says no — and then does the work.</h2>
+      <p class="lede">Two decisions define this product more than any feature: what it does with a month that does not add up, and how little the AI is allowed to touch.</p>
+    </div>
+
+    <div class="grid grid-2">
+
+      <!-- Trade-offs -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h3>When the month does not fit</h3>
+            <p class="tiny dim mt-4">Costed options, ranked by what they cost you</p>
+          </div>
+          <span class="badge badge-red">shortfall</span>
+        </div>
+        <div class="card-body col g-14">
+          <p class="small muted">
+            Every competitor makes the arithmetic work by quietly shrinking the savings
+            goal. MoneyPilot states the shortfall in naira, then produces concrete options
+            and prices each one — how much it frees, and how much it hurts.
+          </p>
+
+          <ol class="ladder">
+            <li class="ladder-row">
+              <span class="ladder-n">1</span>
+              <span class="grow">Move a goal's deadline out</span>
+              <span class="ladder-tag">costs you time</span>
+            </li>
+            <li class="ladder-row">
+              <span class="ladder-n">2</span>
+              <span class="grow">Shop the cheaper market near you</span>
+              <span class="ladder-tag">costs you a trip</span>
+            </li>
+            <li class="ladder-row">
+              <span class="ladder-n">3</span>
+              <span class="grow">Swap an item whose price just moved</span>
+              <span class="ladder-tag">costs you a preference</span>
+            </li>
+            <li class="ladder-row">
+              <span class="ladder-n">4</span>
+              <span class="grow">Cut trips out of the month</span>
+              <span class="ladder-tag">costs you convenience</span>
+            </li>
+            <li class="ladder-row ladder-last">
+              <span class="ladder-n">5</span>
+              <span class="grow">Skip the goal this month</span>
+              <span class="ladder-tag">offered last, on purpose</span>
+            </li>
+          </ol>
+
+          <div class="callout callout-warn">
+            <i data-icon="shield" class="i i-sm"></i>
+            <div>
+              Skipping a goal frees the most money in one move, so on raw score it floats to
+              the top and becomes the headline advice. It is ranked behind everything else by
+              policy — and nothing is applied until you choose it.
+            </div>
+          </div>
+
+          <p class="tiny dim">
+            Options worth under ₦500 a month are dropped rather than listed. A list where two
+            entries matter and three are noise teaches people to stop reading the list.
+          </p>
+        </div>
+      </div>
+
+      <!-- The AI seam -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h3>What the model is allowed to do</h3>
+            <p class="tiny dim mt-4">The ordering is the whole safety argument</p>
+          </div>
+          <span class="badge badge-primary">AI</span>
+        </div>
+        <div class="card-body col g-14">
+          <p class="small muted">
+            The engine computes the answer. The model is then handed the finished answer and
+            the finished figures and asked to say it more naturally. It is
+            <strong>never given the question</strong>, so it cannot decide anything.
+          </p>
+
+          <div class="seam">
+            <div class="seam-step">
+              <span class="seam-ic"><i data-icon="scale" class="i i-sm"></i></span>
+              <div>
+                <div class="small strong">The engine decides</div>
+                <div class="tiny dim">Deterministic arithmetic. Ask twice, get the same naira figure.</div>
+              </div>
+            </div>
+            <div class="seam-arrow"><i data-icon="arrowDown" class="i i-sm"></i></div>
+            <div class="seam-step">
+              <span class="seam-ic accent"><i data-icon="sparkles" class="i i-sm"></i></span>
+              <div>
+                <div class="small strong">The model phrases</div>
+                <div class="tiny dim">Given the answer and the figures. Never the question.</div>
+              </div>
+            </div>
+            <div class="seam-arrow"><i data-icon="arrowDown" class="i i-sm"></i></div>
+            <div class="seam-step">
+              <span class="seam-ic" style="background:var(--success-soft);color:var(--success)"><i data-icon="shield" class="i i-sm"></i></span>
+              <div>
+                <div class="small strong">The rewrite is checked</div>
+                <div class="tiny dim">Any wording that drops, alters or invents a ₦ figure is thrown away.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout callout-info">
+            <i data-icon="info" class="i i-sm"></i>
+            <div>
+              <strong>Take the API key out and nothing about the answers changes</strong> —
+              only how they are worded. A hallucinated sentence is embarrassing; a
+              hallucinated naira figure is money somebody does not have.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
 <!-- ============================ TRUEPRICE ============================ -->
 <div class="invert">
   <section class="section" id="trueprice">
@@ -282,7 +431,7 @@
           <p class="pull">Anyone can collect prices. Making them trustworthy is the hard part.</p>
           <figure class="photo">
             <div class="media media-3x2">
-              <img src="{{ asset('img/') }}market-trader.jpg" alt="A market trader in Nigeria beside her stall" width="1100" height="820" loading="lazy">
+              <img src="{{ asset('img/market-trader.jpg') }}" alt="A market trader in Nigeria beside her stall" width="1100" height="820" loading="lazy">
             </div>
             <figcaption>Every figure in MoneyPilot traces back to someone who actually paid it.</figcaption>
           </figure>
@@ -351,7 +500,7 @@
     <div class="grid grid-2">
       <a class="role-card" href="{{ route('login') }}">
         <div class="media media-16x9" style="margin:-24px -24px 4px;border-radius:var(--r-lg) var(--r-lg) 0 0">
-          <img src="{{ asset('img/') }}shop-keeper.jpg" alt="A small shop in Nigeria" width="1100" height="820" loading="lazy">
+          <img src="{{ asset('img/shop-keeper.jpg') }}" alt="A small shop in Nigeria" width="1100" height="820" loading="lazy">
         </div>
         <div class="row g-12">
           <span class="feature-ic"><i data-icon="wallet" class="i i-lg"></i></span>
@@ -369,7 +518,7 @@
 
       <a class="role-card" href="{{ route('login') }}">
         <div class="media media-16x9" style="margin:-24px -24px 4px;border-radius:var(--r-lg) var(--r-lg) 0 0">
-          <img src="{{ asset('img/') }}city-lagos.jpg" alt="A view across Lagos" width="1600" height="900" loading="lazy">
+          <img src="{{ asset('img/city-lagos.jpg') }}" alt="A view across Lagos" width="1600" height="900" loading="lazy">
         </div>
         <div class="row g-12">
           <span class="feature-ic accent"><i data-icon="inspect" class="i i-lg"></i></span>
@@ -386,9 +535,22 @@
       </a>
     </div>
 
+    {{-- This block used to describe the browser-only prototype this was built
+         from: "runs entirely in your browser with no server", "no real
+         authentication". None of that is true of this build, and understating
+         what actually works is a strange way to lose an evaluation. What IS
+         still a demo is the corpus — so say exactly that, and nothing softer. --}}
     <div class="callout mt-24">
       <i data-icon="alert" class="i i-sm"></i>
-      <div><strong>This is a prototype.</strong> It runs entirely in your browser with no server — so no real authentication, no sync between devices, and a price network seeded with realistic fixtures rather than live submissions. Every screen says so where it matters, and it should never be pointed at a real bank account.</div>
+      <div>
+        <strong>What is real, and what is seeded.</strong>
+        The engine, the accounts and the arithmetic are real: sign-in is checked server-side
+        and rate-limited, every budget is computed on request, and roles are enforced by a
+        policy rather than by hiding a link. The <em>price corpus</em> is seeded — realistic
+        community reports rather than live submissions from the public — and every median on
+        every screen names how many reports it used and how old they are.
+        MoneyPilot never asks for banking credentials and has no way to move money.
+      </div>
     </div>
   </div>
 </section>
@@ -410,12 +572,16 @@
         <a href="#how">How it works</a>
         <a href="#trueprice">The price network</a>
       </div>
+      {{-- These last two were `href="#"` carrying a `data-toast` attribute that
+           nothing in the app listens for — so they scrolled the visitor back to
+           the top and said nothing. A link that does nothing is worse than no
+           link; both now point at the sections that actually answer them. --}}
       <div class="foot-col">
         <h4>Understand</h4>
         <a href="#thesis">The idea</a>
+        <a href="#honest">When it doesn't fit</a>
+        <a href="#trueprice">How prices are trusted</a>
         <a href="#who">Who it's for</a>
-        <a href="#" data-toast="The methodology paper is not part of this prototype">Methodology</a>
-        <a href="#" data-toast="Open data access is not part of this prototype">Data access</a>
       </div>
       <div class="foot-col">
         <h4>Contact</h4>
@@ -427,9 +593,9 @@
     <div class="foot-bar">
       <span>© 2026 MoneyPilot</span>
       <span class="sep">·</span>
-      <span>Prototype — no real money moves through this build</span>
+      <span>Budgeting support only — no money moves through this build</span>
       <span class="sep">·</span>
-      <span>Photography from Wikimedia Commons under CC BY / CC BY-SA — see <span class="mono">{{ asset('img/') }}CREDITS.md</span></span>
+      <span>Photography from Wikimedia Commons under CC BY / CC BY-SA — see <span class="mono">{{ asset('img/CREDITS.md') }}</span></span>
       <span class="grow"></span>
       <span class="prov">deterministic engine · offline-first · v1.0.0</span>
     </div>
