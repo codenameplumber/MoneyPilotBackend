@@ -29,17 +29,48 @@ class MailCheck extends Command
 
     public function handle(BudgetService $budgets): int
     {
+        /*
+         * Transport-aware, because there are now two.
+         *
+         * This printed the SMTP host and refused on an empty MAIL_USERNAME
+         * whatever the mailer was — so the moment mail was switched to Resend
+         * for production, the one command that exists to verify mail told you
+         * to go and find your Mailtrap credentials. Wrong advice from a
+         * pre-flight check is worse than no check.
+         */
+        $mailer = config('mail.default');
+
         $this->line('');
-        $this->line('  mailer   ' . config('mail.default'));
-        $this->line('  host     ' . config('mail.mailers.smtp.host') . ':' . config('mail.mailers.smtp.port'));
-        $this->line('  from     ' . config('mail.from.address'));
+        $this->line('  mailer   ' . $mailer);
 
-        if (blank(config('mail.mailers.smtp.username'))) {
-            $this->line('');
-            $this->error('  MAIL_USERNAME is empty — put your Mailtrap credentials in .env first.');
-            $this->line('  Mailtrap → Email Testing → your inbox → Integrations → Laravel 9+');
+        if ($mailer === 'resend') {
+            $key = (string) config('services.resend.key', env('RESEND_API_KEY', ''));
 
-            return self::FAILURE;
+            // A fingerprint, never the key.
+            $this->line('  key      ' . ($key === ''
+                ? '(empty)'
+                : substr($key, 0, 3) . '…' . substr($key, -4) . '  (' . strlen($key) . ' chars)'));
+            $this->line('  from     ' . config('mail.from.address'));
+
+            if ($key === '') {
+                $this->line('');
+                $this->error('  RESEND_API_KEY is empty — set it in .env first.');
+                $this->line('  resend.com → API Keys. The sending domain must be verified,');
+                $this->line('  and MAIL_FROM_ADDRESS must be on it or every send is rejected.');
+
+                return self::FAILURE;
+            }
+        } else {
+            $this->line('  host     ' . config('mail.mailers.smtp.host') . ':' . config('mail.mailers.smtp.port'));
+            $this->line('  from     ' . config('mail.from.address'));
+
+            if (blank(config('mail.mailers.smtp.username'))) {
+                $this->line('');
+                $this->error('  MAIL_USERNAME is empty — put your Mailtrap credentials in .env first.');
+                $this->line('  Mailtrap → Email Testing → your inbox → Integrations → Laravel 9+');
+
+                return self::FAILURE;
+            }
         }
 
         $user = User::where('email', 'chidi@student.unilag.ng')->first()
@@ -89,7 +120,9 @@ class MailCheck extends Command
             return self::FAILURE;
         }
 
-        $this->info('  All three are in your Mailtrap inbox. Check that ₦ renders and the links resolve.');
+        $this->info($mailer === 'resend'
+            ? '  All three were accepted by Resend. Check the real inbox: ₦ renders, links resolve.'
+            : '  All three are in your Mailtrap inbox. Check that ₦ renders and the links resolve.');
         $this->line('');
 
         return self::SUCCESS;
