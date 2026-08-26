@@ -70,7 +70,7 @@ class ActivitySeeder extends Seeder
      * Random seeded activity on top of that makes the demo worse, and it also
      * quietly broke two tests that (correctly) assumed these are pristine.
      */
-    private const CURATED = [
+    public const CURATED = [
         'chidi@student.unilag.ng',
         'amaka.eze@gmail.com',
         'a.okafor@moneypilot.ng',
@@ -82,9 +82,13 @@ class ActivitySeeder extends Seeder
         $r       = Prng::seeded('activity', 'v1');
         $coach   = app(CoachService::class);
         $prices  = app(PriceService::class);
+        // Explicitly ordered, for the same reason the cohort is: without it the
+        // row order is whatever MySQL feels like, so which member gets which
+        // branch of the shared generator changes between runs.
         $members = User::where('role', 'member')
             ->whereNotIn('email', self::CURATED)
             ->with('profile')
+            ->orderBy('id')
             ->get();
 
         $spenders = $askers = $reporters = $checkers = 0;
@@ -145,8 +149,12 @@ class ActivitySeeder extends Seeder
 
             $rows[] = [
                 'user_id'     => $user->id,
+                // Clamped to now: this stamps a random hour onto a date that
+                // may be today, so a run earlier in the day produced entries
+                // dated in the future — which the dashboard then rendered,
+                // accurately, as "spent 14h from now".
                 'occurred_at' => $now->copy()->subDays((int) floor($r->next() * (int) $now->format('j')))
-                                    ->setTime(8 + (int) floor($r->next() * 12), 0),
+                                    ->setTime(8 + (int) floor($r->next() * 12), 0)->min($now->copy()),
                 'amount'      => (int) round((200_00 + $r->next() * 400_000) / 100) * 100,
                 'category'    => $category,
                 'item_id'     => null,
@@ -163,7 +171,23 @@ class ActivitySeeder extends Seeder
     /** Prices contributed through the app, against the member's own area. */
     private function reportPrices(User $user, Prng $r, PriceService $prices): void
     {
-        $items    = Item::inRandomOrder()->limit(1 + (int) floor($r->next() * 5))->get();
+        /*
+         * Picked with the seeded generator, not inRandomOrder().
+         *
+         * MySQL's RAND() is not seeded from anything this class controls, so it
+         * made the corpus — and therefore every median downstream of it —
+         * different on every run. "Deterministic" has to mean the whole seeder,
+         * not the parts that were convenient.
+         */
+        $all      = Item::orderBy('id')->get();
+        $wanted   = 1 + (int) floor($r->next() * 5);
+        $items    = collect();
+
+        for ($i = 0; $i < $wanted; $i++) {
+            $items->push($all[(int) floor($r->next() * $all->count()) % $all->count()]);
+        }
+
+        $items    = $items->unique('id');
         $location = $user->profile->location;
         $filed    = $user->priceReports()->count();
 

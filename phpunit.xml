@@ -28,6 +28,21 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <!--
+            The suite must never reach OpenAI.
+
+            CoachTest, EmailTest, ScaleTest and ScreensTest all exercise the
+            coach and none of them fake the HTTP client — they had no reason to,
+            because the seam is inert without a key. The moment a real key lands
+            in .env that stops being true: the suite starts making billed calls,
+            takes as long as the API feels like taking, and goes red when OpenAI
+            has a bad afternoon. Pinned here for the same reason MAIL_MAILER is.
+
+            LanguageModelTest re-enables the seam through config() at runtime,
+            against a faked client, so it is unaffected by this.
+        -->
+        <env name="OPENAI_ENABLED" value="false"/>
+        <env name="OPENAI_API_KEY" value=""/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

@@ -34,36 +34,33 @@
     </span>
   </div>
 
-  <div class="chips mb-16">
-    @foreach (['all' => 'Everything', 'typo' => 'Likely typos', 'suspect' => 'Suspect', 'borderline' => 'Borderline', 'held' => 'Currently held'] as $key => $label)
-      <button class="chip" type="button" wire:click="$set('filter', '{{ $key }}')"
-              aria-pressed="{{ $filter === $key ? 'true' : 'false' }}">
-        {{ $label }} <span class="dim mono">{{ $counts[$key] }}</span>
-      </button>
-    @endforeach
-  </div>
-
   <section class="card">
-    <div class="card-head">
-      <div>
-        <h3>{{ number_format($total) }} report{{ $total === 1 ? '' : 's' }} to look at</h3>
-        <p class="tiny dim mt-4">Furthest from consensus first</p>
-      </div>
-    </div>
+    <div class="dt">
 
-    <div class="table-wrap">
-      <table class="table">
+      <x-dt-bar :meta="$meta" :per-page="$perPage" placeholder="Find an item or market…" model="filterQ">
+        <div class="chips">
+          @foreach (['all' => 'Everything', 'typo' => 'Likely typos', 'suspect' => 'Suspect', 'borderline' => 'Borderline', 'held' => 'Currently held'] as $key => $label)
+            <button class="chip" type="button" wire:click="$set('filter', '{{ $key }}')"
+                    aria-pressed="{{ $filter === $key ? 'true' : 'false' }}">
+              {{ $label }} <span class="dim mono">{{ $counts[$key] }}</span>
+            </button>
+          @endforeach
+        </div>
+      </x-dt-bar>
+
+      <div class="dt-scroll table-wrap">
+        <table class="table dt-table">
         <thead>
           <tr>
-            <th>Item</th>
-            <th>Where</th>
-            <th class="num">Reported</th>
-            <th class="num">Local median</th>
-            <th class="num">Off by</th>
-            <th class="num">Peers</th>
-            <th>Age</th>
-            <th>Verdict</th>
-            <th>Status</th>
+            <x-dt-head column="item"    :sort-by="$sortBy" :sort-dir="$sortDir">Item</x-dt-head>
+            <x-dt-head column="where"   :sort-by="$sortBy" :sort-dir="$sortDir">Where</x-dt-head>
+            <x-dt-head column="price"   :sort-by="$sortBy" :sort-dir="$sortDir" num>Reported</x-dt-head>
+            <x-dt-head column="median"  :sort-by="$sortBy" :sort-dir="$sortDir" num>Local median</x-dt-head>
+            <x-dt-head column="off"     :sort-by="$sortBy" :sort-dir="$sortDir" num>Off by</x-dt-head>
+            <x-dt-head column="peers"   :sort-by="$sortBy" :sort-dir="$sortDir" num>Peers</x-dt-head>
+            <x-dt-head column="age"     :sort-by="$sortBy" :sort-dir="$sortDir">Age</x-dt-head>
+            <x-dt-head column="verdict" :sort-by="$sortBy" :sort-dir="$sortDir">Verdict</x-dt-head>
+            <x-dt-head column="status"  :sort-by="$sortBy" :sort-dir="$sortDir">Status</x-dt-head>
             <th></th>
           </tr>
         </thead>
@@ -111,17 +108,11 @@
             </tr>
           @endforelse
         </tbody>
-      </table>
-    </div>
-
-    @if ($total > count($rows))
-      <div class="card-foot">
-        <p class="tiny dim">
-          Showing the {{ count($rows) }} furthest from consensus of {{ number_format($total) }}.
-          The rest are borderline by definition — a queue that never empties is a queue nobody works.
-        </p>
+        </table>
       </div>
-    @endif
+
+      <x-dt-foot :meta="$meta" />
+    </div>
   </section>
 
   <section class="card mt-16">

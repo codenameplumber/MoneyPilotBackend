@@ -168,7 +168,7 @@
                 <span class="item-val {{ $isReversal ? 'green' : '' }}">{{ Money::fmt($tx->amount) }}</span>
               </span>
               @if (! $isReversal && ! $isVoided)
-                <button class="btn btn-icon btn-quiet" wire:click="reverse({{ $tx->id }})"
+                <button class="btn btn-icon btn-quiet" wire:click="askReverse({{ $tx->id }})"
                         title="Correct this entry" aria-label="Correct this entry">
                   <i data-icon="refresh" class="i i-sm"></i>
                 </button>
@@ -197,6 +197,25 @@
       </p>
     </div>
   </section>
+
+  @if ($pending)
+    <x-confirm title="Reverse this entry?"
+               confirm="Yes, reverse it"
+               cancel="Keep it"
+               tone="danger"
+               on-confirm="confirmReverse"
+               on-cancel="cancelReverse">
+      <p class="small">
+        <b>{{ $pending->note }}</b> — {{ Money::fmt($pending->amount) }},
+        logged {{ $pending->occurred_at->diffForHumans() }}.
+      </p>
+      <p class="small muted">
+        This does not delete anything. It writes an equal and opposite entry pointing back at this
+        one, so both stay on your record and your budget can always explain why it changed.
+      </p>
+      <p class="tiny dim">A reversal cannot itself be reversed.</p>
+    </x-confirm>
+  @endif
 
   <x-foot />
 </main>

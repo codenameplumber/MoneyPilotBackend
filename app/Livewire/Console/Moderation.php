@@ -4,6 +4,7 @@ namespace App\Livewire\Console;
 
 use App\Models\ContributorStat;
 use App\Models\PriceReport;
+use App\Livewire\Concerns\WithDataTable;
 use App\Services\NetworkService;
 use App\Services\PriceService;
 use Illuminate\Support\Facades\Auth;
@@ -32,8 +33,13 @@ use Livewire\Component;
 #[Layout('layouts.console')]
 class Moderation extends Component
 {
+    use WithDataTable;
+
     #[Url]
     public string $filter = 'all';
+
+    #[Url(as: 'q')]
+    public string $filterQ = '';
 
     public string $flash = '';
 
@@ -94,6 +100,22 @@ class Moderation extends Component
             default      => $flagged,
         };
 
+        // Search across item and place together, because a moderator working
+        // this queue thinks in either — "rice" or "Mile 12", not both.
+        if ($this->filterQ !== '') {
+            $needle = mb_strtolower($this->filterQ);
+
+            $rows = array_filter($rows, function ($f) use ($needle) {
+                $haystack = mb_strtolower(implode(' ', [
+                    $f['report']->item->label ?? '',
+                    $f['report']->market?->label ?? '',
+                    $f['report']->location?->label ?? '',
+                ]));
+
+                return str_contains($haystack, $needle);
+            });
+        }
+
         $counts = [
             'all'        => count($flagged),
             'typo'       => count(array_filter($flagged, fn ($f) => $f['verdict'] === 'likely-typo')),
@@ -102,10 +124,26 @@ class Moderation extends Component
             'held'       => PriceReport::where('status', 'held')->count(),
         ];
 
+        $table = $this->paginate(array_values($rows), fn (array $r, string $c) => match ($c) {
+            'item'    => $r['report']->item->label,
+            'where'   => $r['report']->market?->label ?? $r['report']->location?->label ?? '',
+            'price'   => $r['report']->price,
+            'median'  => $r['median'],
+            // How wrong it is, not which direction — a 10x under is as
+            // interesting as a 10x over.
+            'off'     => abs($r['ratio'] - 1),
+            'peers'   => $r['peers'],
+            'age'     => $r['ageDays'],
+            'verdict' => $r['verdict'],
+            'status'  => $r['report']->status,
+            default   => 0,
+        });
+
         return view('livewire.console.moderation', [
-            'rows'   => array_slice(array_values($rows), 0, 60),
+            'rows'   => $table['rows'],
+            'meta'   => $table,
             'counts' => $counts,
-            'total'  => count($rows),
+            'total'  => $table['total'],
             'health' => $network->health(),
             'me'     => Auth::user(),
         ])->layoutData([

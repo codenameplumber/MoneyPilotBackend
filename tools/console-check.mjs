@@ -6,7 +6,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const EDGE = process.env.EDGE_PATH || 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe';
+const EDGE = process.env.EDGE_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const PORT = 9444;
 const url = process.argv[2] || 'http://localhost:5173/app/coach.html?as=chidi';
 const sleep = ms => new Promise(r => setTimeout(r, ms));

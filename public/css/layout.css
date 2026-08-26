@@ -732,3 +732,66 @@
 }
 .sec-head h2 { font-size: var(--t-sm); font-weight: 600; }
 .sec-head a { font-size: var(--t-xs); font-weight: 500; }
+
+
+/* ==========================================================================
+   5 · Marketing — the honesty section
+   Two ideas the price board cannot show: what happens when a month does not
+   balance, and how narrow the language model's job is. Both are built from
+   tokens only, so they invert on the dark band and flip with the theme
+   without a single per-component override.
+   ========================================================================== */
+
+/* --- Trade-off ladder ----------------------------------------------------
+   Ranked options, cheapest-in-human-terms first. The last row is styled as a
+   deliberate exception rather than as row five of five, because the ordering
+   IS the argument: skipping a goal frees the most money and is offered last
+   anyway. If it looked like every other row, the policy would be invisible. */
+.ladder { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; }
+.ladder-row {
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 12px;
+  background: var(--surface);
+  font-size: var(--t-sm);
+}
+.ladder-n {
+  width: 20px; height: 20px; flex: none;
+  border-radius: var(--r-xs);
+  display: grid; place-items: center;
+  background: var(--surface-3); color: var(--text-2);
+  font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+}
+.ladder-tag { flex: none; font-size: var(--t-xs); color: var(--text-3); white-space: nowrap; }
+
+.ladder-last { background: var(--warn-soft); }
+.ladder-last .ladder-n { background: var(--warn); color: var(--text-inv); }
+.ladder-last .ladder-tag { color: var(--warn); font-weight: 500; }
+
+/* Below ~430px the "costs you convenience" tag and the option name fight for
+   the same line and both truncate. Stack instead — the tag is the quieter of
+   the two and reads fine underneath. */
+@media (max-width: 460px) {
+  .ladder-row { flex-wrap: wrap; row-gap: 2px; }
+  .ladder-tag { width: 100%; padding-left: 31px; }
+}
+
+/* --- The AI seam ---------------------------------------------------------
+   Three steps in a fixed order, with the arrow between them carrying the
+   claim: the model sits in the middle and never reaches the left-hand box. */
+.seam { display: flex; flex-direction: column; gap: 0; }
+.seam-step {
+  display: flex; align-items: center; gap: 11px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+.seam-ic {
+  width: 30px; height: 30px; flex: none;
+  border-radius: var(--r-sm);
+  display: grid; place-items: center;
+  background: var(--primary-soft); color: var(--primary-ink);
+}
+.seam-ic.accent { background: var(--accent-soft); color: var(--accent-ink); }
+.seam-arrow { display: grid; place-items: center; height: 18px; color: var(--text-3); }
+.seam-arrow .i { width: 13px; height: 13px; }

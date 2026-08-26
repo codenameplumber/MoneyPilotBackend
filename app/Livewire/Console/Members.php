@@ -4,6 +4,7 @@ namespace App\Livewire\Console;
 
 use App\Models\Budget;
 use App\Models\User;
+use App\Livewire\Concerns\WithDataTable;
 use App\Services\NetworkService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -27,6 +28,8 @@ use Livewire\Component;
 #[Layout('layouts.console')]
 class Members extends Component
 {
+    use WithDataTable;
+
     #[Url]
     public string $filter = 'all';
 
@@ -63,12 +66,36 @@ class Members extends Component
             ];
         });
 
-        $rows = match ($this->filter) {
+        $matching = match ($this->filter) {
             'stretched' => $members->filter(fn ($m) => $m['feasible'] === false),
             'balanced'  => $members->filter(fn ($m) => $m['feasible'] === true),
             'nobudget'  => $members->filter(fn ($m) => $m['budget'] === null),
             default     => $members,
         };
+
+        /*
+         * Sorting reaches into three different shapes — an Eloquent model, a
+         * possibly-null budget, and a computed flag — which is exactly why the
+         * trait asks the component for the value rather than guessing.
+         */
+        $table = $this->paginate($matching->values()->all(), function (array $row, string $column) {
+            $b = $row['budget'];
+
+            return match ($column) {
+                'name'      => $row['user']->name,
+                'area'      => $row['user']->profile?->location?->label ?? '',
+                'household' => $row['user']->profile?->household_size ?? 0,
+                'income'    => $b?->income ?? -1,
+                'floor'     => $b?->floor_total ?? -1,
+                'goals'     => $b?->goal_monthly ?? -1,
+                // Short first when descending: those are the ones to look at.
+                'month'     => $b === null ? -1 : ($b->feasible ? 0 : $b->shortfall),
+                'entries'   => $row['user']->transactions_count,
+                'prices'    => $row['user']->price_reports_count,
+                'joined'    => $row['joined']->getTimestamp(),
+                default     => 0,
+            };
+        });
 
         /*
          * Strict comparisons, deliberately.
@@ -88,7 +115,8 @@ class Members extends Component
         ];
 
         return view('livewire.console.members', [
-            'rows'      => $rows->values(),
+            'rows'      => $table['rows'],
+            'meta'      => $table,
             'counts'    => $counts,
             'health'    => $network->health(),
             'shortfall' => $short->sum(fn ($m) => $m['budget']->shortfall),

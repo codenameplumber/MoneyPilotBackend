@@ -21,34 +21,32 @@
   </div>
 
   <section class="card mt-16">
-    <div class="card-head">
-      <div class="input-group" style="width:280px">
-        <i data-icon="search" class="i i-sm"></i>
-        <input class="input" wire:model.live.debounce.250ms="q" placeholder="Find a handle…" aria-label="Search contributors">
-      </div>
-      <div class="chips">
+    <div class="dt">
+
+      <x-dt-bar :meta="$meta" :per-page="$perPage" placeholder="Find a handle…">
+        <div class="chips">
         @foreach (['all' => 'Everyone', 'trusted' => 'Trusted', 'good' => 'Good', 'watch' => 'Watch', 'restricted' => 'Restricted'] as $key => $label)
           <button class="chip" type="button" wire:click="$set('tier', '{{ $key }}')"
                   aria-pressed="{{ $tier === $key ? 'true' : 'false' }}">
             {{ $label }} <span class="dim mono">{{ $counts[$key] }}</span>
           </button>
         @endforeach
-      </div>
-    </div>
+        </div>
+      </x-dt-bar>
 
-    <div class="table-wrap">
-      <table class="table">
+      <div class="dt-scroll table-wrap">
+        <table class="table dt-table">
         <thead>
           <tr>
-            <th>Handle</th>
-            <th class="num">Weight</th>
-            <th class="num">Reports</th>
-            <th class="num">Flagged</th>
-            <th class="num">Agreement</th>
-            <th class="num">Areas</th>
-            <th class="num">Items</th>
-            <th>Last report</th>
-            <th>Standing</th>
+            <x-dt-head column="handle"     :sort-by="$sortBy" :sort-dir="$sortDir">Handle</x-dt-head>
+            <x-dt-head column="reputation" :sort-by="$sortBy" :sort-dir="$sortDir" num>Weight</x-dt-head>
+            <x-dt-head column="reports"    :sort-by="$sortBy" :sort-dir="$sortDir" num>Reports</x-dt-head>
+            <x-dt-head column="flagged"    :sort-by="$sortBy" :sort-dir="$sortDir" num>Flagged</x-dt-head>
+            <x-dt-head column="accuracy"   :sort-by="$sortBy" :sort-dir="$sortDir" num>Agreement</x-dt-head>
+            <x-dt-head column="areas"      :sort-by="$sortBy" :sort-dir="$sortDir" num>Areas</x-dt-head>
+            <x-dt-head column="items"      :sort-by="$sortBy" :sort-dir="$sortDir" num>Items</x-dt-head>
+            <x-dt-head column="newest"     :sort-by="$sortBy" :sort-dir="$sortDir">Last report</x-dt-head>
+            <x-dt-head column="tier"       :sort-by="$sortBy" :sort-dir="$sortDir">Standing</x-dt-head>
           </tr>
         </thead>
         <tbody>
@@ -86,15 +84,11 @@
             </tr>
           @endforelse
         </tbody>
-      </table>
-    </div>
-
-    @if ($total > count($rows))
-      <div class="card-foot between">
-        <span class="tiny dim">Showing {{ count($rows) }} of {{ number_format($total) }}</span>
-        <button class="btn btn-ghost btn-sm" wire:click="loadMore">Show more</button>
+        </table>
       </div>
-    @endif
+
+      <x-dt-foot :meta="$meta" />
+    </div>
   </section>
 
   <section class="card mt-16">

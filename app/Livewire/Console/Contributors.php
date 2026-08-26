@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Console;
 
+use App\Livewire\Concerns\WithDataTable;
 use App\Services\NetworkService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -22,18 +23,14 @@ use Livewire\Component;
 #[Layout('layouts.console')]
 class Contributors extends Component
 {
+    use WithDataTable;
+
     #[Url]
     public string $tier = 'all';
 
     #[Url]
     public string $q = '';
 
-    public int $perPage = 25;
-
-    public function loadMore(): void
-    {
-        $this->perPage += 25;
-    }
 
     public function render(NetworkService $network)
     {
@@ -51,9 +48,17 @@ class Contributors extends Component
             $counts[$t] = count(array_filter($all, fn ($c) => $c['tier'] === $t));
         }
 
+        $table = $this->paginate($rows, fn (array $r, string $c) => match ($c) {
+            'handle' => $r['handle'],
+            'tier'   => $r['tier'],
+            'newest' => $r['newestDays'] ?? 9999,
+            default  => $r[$c] ?? 0,
+        });
+
         return view('livewire.console.contributors', [
-            'rows'    => array_slice($rows, 0, $this->perPage),
-            'total'   => count($rows),
+            'rows'    => $table['rows'],
+            'meta'    => $table,
+            'total'   => $table['total'],
             'counts'  => $counts,
             'health'  => $network->health(),
             'members' => count(array_filter($all, fn ($c) => $c['member'])),

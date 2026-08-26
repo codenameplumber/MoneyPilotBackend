@@ -36,22 +36,21 @@ return [
     ],
 
     /*
-     * The key lives in .env only. `enabled` is a separate switch so the app
-     * can run entirely on the deterministic engine — which is also what
-     * happens automatically if the key is absent.
+     * OpenAI. Strictly optional: the engine computes every figure, and the
+     * model is only ever handed a finished answer and asked to phrase it.
+     * Leave the key blank and the product behaves identically, in the engine's
+     * own words.
+     *
+     * The key lives in .env only. `enabled` is a separate switch, so the app
+     * can be forced onto the deterministic engine even with a key present —
+     * which is also what happens automatically if the key is absent.
      */
-    /*
-     * Anthropic. Strictly optional: the engine computes every figure, and
-     * Claude is only ever handed a finished answer and asked to phrase it.
-     * Leave the key blank and the product behaves identically, in the
-     * engine's own words.
-     */
-    'claude' => [
-        'key'     => env('ANTHROPIC_API_KEY'),
-        'model'   => env('ANTHROPIC_MODEL', 'claude-sonnet-5'),
-        'enabled' => env('CLAUDE_ENABLED', false),
-        // Blank means Anthropic direct. Set only to route through a gateway.
-        'endpoint' => env('ANTHROPIC_ENDPOINT'),
+    'openai' => [
+        'key'      => env('OPENAI_API_KEY'),
+        'model'    => env('OPENAI_MODEL', 'gpt-4o-mini'),
+        'enabled'  => env('OPENAI_ENABLED', false),
+        // Blank means OpenAI direct. Set only to route through a gateway.
+        'endpoint' => env('OPENAI_ENDPOINT'),
     ],
 
 ];

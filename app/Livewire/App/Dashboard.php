@@ -6,6 +6,7 @@ use App\Domain\Categories;
 use App\Domain\Money;
 use App\Models\PriceReport;
 use App\Services\BudgetService;
+use App\Services\InsightService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -29,7 +30,7 @@ class Dashboard extends Component
         $this->dispatch('budget-rebuilt');
     }
 
-    public function render(BudgetService $budgets)
+    public function render(BudgetService $budgets, InsightService $insights)
     {
         $user     = Auth::user()->load('profile.location');
         $position = $budgets->monthPosition($user);
@@ -65,20 +66,72 @@ class Dashboard extends Component
 
         $hour = (int) date('G');
 
+        /*
+         * The plan against the income that has to carry it.
+         *
+         * The donut was captioned "Where the money is going" and centred on the
+         * plan total, which on a short month is a number larger than anything
+         * the member will actually receive — ₦354k of "going" against ₦254k of
+         * income, presented as though the money existed. The chart is honest
+         * about composition; it needed a line making it honest about scale.
+         */
+        $planned = array_sum(array_filter($position['alloc'], fn ($v) => $v > 0));
+
         return view('livewire.app.dashboard', [
             'user'        => $user,
             'budget'      => $budget,
             'position'    => $position,
             'rows'        => array_slice($rows, 0, 6),
+            'planned'     => $planned,
+            // How many of the listed areas need looking at, so the section can
+            // say so once instead of making the member count red bars.
+            'overCount'   => count(array_filter($rows, fn ($r) => $r['health']['state'] === 'crit')),
+            'areaCount'   => count($rows),
             'goals'       => $user->goals()->where('paused', false)->get(),
             'recent'      => $user->transactions()->latest('occurred_at')->limit(4)->get(),
             'totalSpent'  => array_sum($position['spend']),
             'reportCount' => PriceReport::count(),
+            // The four detectors — price shock, burn rate, overpayment, goal
+            // drift. Price shock is the one no competitor can compute.
+            'insights'    => $insights->detect($user),
+            'slices'      => $this->slices($position['alloc']),
         ])->layoutData([
             'page'  => 'home',
             'title' => ($hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good evening'))
                        . ', ' . explode(' ', $user->name)[0],
             'sub'   => date('F Y') . ' · day ' . $position['elapsed'] . ' of ' . $position['total_days'],
         ]);
+    }
+    /**
+     * Donut slices: the five largest categories, then a collapsed tail.
+     *
+     * A donut is defensible at six slices with a labelled legend and
+     * indefensible at fourteen, so the tail becomes one "Everything else"
+     * rather than a fan of unreadable slivers.
+     */
+    private function slices(array $alloc): array
+    {
+        $rows = [];
+        foreach ($alloc as $id => $value) {
+            if ($value > 0) $rows[] = ['id' => $id, 'label' => Categories::label($id), 'value' => $value];
+        }
+
+        usort($rows, fn ($a, $b) => $b['value'] <=> $a['value']);
+
+        $top  = array_slice($rows, 0, 5);
+        $rest = array_slice($rows, 5);
+
+        if ($rest) {
+            $top[] = ['id' => 'other', 'label' => 'Everything else',
+                      'value' => array_sum(array_column($rest, 'value'))];
+        }
+
+        foreach ($top as $i => $row) {
+            $top[$i]['color'] = $row['id'] === 'other'
+                ? 'var(--text-3)'
+                : 'var(--c' . (($i % 6) + 1) . ')';
+        }
+
+        return $top;
     }
 }
