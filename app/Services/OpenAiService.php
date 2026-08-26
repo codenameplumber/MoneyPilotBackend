@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * The language-model seam. Anthropic's Claude.
+ * The language-model seam. OpenAI.
  *
  * READ THIS BEFORE CHANGING ANYTHING HERE.
  *
@@ -21,45 +21,42 @@ use Illuminate\Support\Facades\Log;
  *     money somebody does not have.
  *   - Financial advice that cannot be reproduced cannot be audited. The engine
  *     gives the same answer twice; the model only changes the wording.
- *   - If Anthropic is slow, down, unconfigured, or out of credit, the product
+ *   - If OpenAI is slow, down, unconfigured, or out of credit, the product
  *     still works. Every method here falls back to the engine's own wording.
  *
  * Calls go through Laravel's HTTP client rather than an SDK: this is a few
- * dozen lines against a stable REST endpoint, and a dependency that pins its
- * own Guzzle is how the previous provider ended up unusable on Laravel 13.
+ * dozen lines against a stable REST endpoint, and openai-php/laravel pins
+ * Guzzle 7 while Laravel 13 ships Guzzle 8, so the package will not install.
  *
  * The key lives in .env and nowhere else. It is never logged, never returned
  * in a response, and never sent to the browser.
  */
-class ClaudeService
+class OpenAiService
 {
-    private const ENDPOINT = 'https://api.anthropic.com/v1/messages';
-
-    /**
-     * Overridable so a deployment can route through a gateway or proxy — and
-     * so the connection-failure path can be tested against a closed local port
-     * rather than a faked exception, which segfaults PHP on Windows.
-     */
-    private function endpoint(): string
-    {
-        return config('services.claude.endpoint') ?: self::ENDPOINT;
-    }
-
-    /** The Messages API version this code is written against. */
-    private const API_VERSION = '2023-06-01';
+    private const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 
     public function __construct(
         private ?string $key = null,
         private ?string $model = null,
     ) {
-        $this->key   ??= config('services.claude.key');
-        $this->model ??= config('services.claude.model', 'claude-sonnet-5');
+        $this->key   ??= config('services.openai.key');
+        $this->model ??= config('services.openai.model', 'gpt-4o-mini');
+    }
+
+    /**
+     * Overridable so a deployment can route through a gateway or proxy — and so
+     * the connection-failure path can be tested against a closed local port
+     * rather than a faked exception, which segfaults PHP on Windows.
+     */
+    private function endpoint(): string
+    {
+        return config('services.openai.endpoint') ?: self::ENDPOINT;
     }
 
     /** Configured AND switched on. Both are required. */
     public function enabled(): bool
     {
-        return (bool) config('services.claude.enabled', false) && filled($this->key);
+        return (bool) config('services.openai.enabled', false) && filled($this->key);
     }
 
     /**
@@ -81,6 +78,10 @@ class ClaudeService
         ABSOLUTE RULES:
         - Every figure is already correct. Reproduce amounts EXACTLY as given. Never
           compute, estimate, round, convert or infer any number.
+        - KEEP EVERY NAIRA FIGURE that appears in the answer. All of them, even one
+          that reads as redundant — do not replace "this is ₦8,000" with "this
+          purchase". A rewrite missing any figure is DISCARDED and your work is
+          wasted, so count them before you reply.
         - Never introduce a figure that is not in the facts provided.
         - Never give investment, tax, or credit advice. This is budgeting only.
         - If the facts do not support a claim, leave the claim out.
@@ -102,7 +103,7 @@ class ClaudeService
             $user .= "\n\nThe situation is: {$tone}.";
         }
 
-        $text = $this->message($system, $user, maxTokens: 300);
+        $text = $this->chat($system, $user, maxTokens: 300);
 
         // A rewrite that dropped or altered the figures is worse than no rewrite.
         return $text && $this->keepsFigures($answer, $text) ? $text : $answer;
@@ -125,7 +126,7 @@ class ClaudeService
         most, plain English, second person, no preamble.
         PROMPT;
 
-        return $this->message(
+        return $this->chat(
             $system,
             "Summarise this month:\n" . json_encode($facts, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
             maxTokens: 260,
@@ -133,35 +134,46 @@ class ClaudeService
     }
 
     /**
-     * One call to the Messages API.
+     * One call to the Chat Completions API.
      *
      * @return string|null null on any failure — callers must have a fallback.
      */
-    private function message(string $system, string $user, int $maxTokens = 300): ?string
+    private function chat(string $system, string $user, int $maxTokens = 300): ?string
     {
         try {
-            $response = Http::withHeaders([
-                    'x-api-key'         => $this->key,
-                    'anthropic-version' => self::API_VERSION,
-                    'content-type'      => 'application/json',
-                ])
-                ->timeout(15)
-                ->connectTimeout(5)
-                ->retry(1, 400, throw: false)
+            /*
+             * One attempt, and a short one.
+             *
+             * `retry(1, ...)` reads like "retry once" and is not: Laravel's
+             * $times is the TOTAL number of attempts, so it rethrows on the
+             * first failure and the 400ms backoff never runs. Rather than
+             * quietly relying on dead code, the single attempt is now the
+             * stated intent.
+             *
+             * And it is the right intent here. This call improves WORDING —
+             * the answer is already computed, already correct, and already on
+             * its way to the member. Fifteen seconds of "Working it out…" on a
+             * phone buys a nicer sentence at the cost of the thing feeling
+             * broken, so the ceiling is eight and the fallback is instant.
+             */
+            $response = Http::withToken($this->key)
+                ->timeout(8)
+                ->connectTimeout(4)
+                ->retry(1, 0, throw: false)
                 ->post($this->endpoint(), [
                     'model'       => $this->model,
-                    'max_tokens'  => $maxTokens,
                     'temperature' => 0.4,
-                    'system'      => $system,
+                    'max_tokens'  => $maxTokens,
                     'messages'    => [
-                        ['role' => 'user', 'content' => $user],
+                        ['role' => 'system', 'content' => $system],
+                        ['role' => 'user',   'content' => $user],
                     ],
                 ]);
 
             if ($response->failed()) {
                 // Log the status and error type. Never the key, never the
                 // member's figures — this file's whole job is not leaking those.
-                Log::warning('Claude request failed', [
+                Log::warning('OpenAI request failed', [
                     'status' => $response->status(),
                     'error'  => $response->json('error.type'),
                 ]);
@@ -169,28 +181,18 @@ class ClaudeService
                 return null;
             }
 
-            /*
-             * The Messages API returns content as a list of blocks. Taking
-             * `content.0.text` works today and breaks the day a response opens
-             * with any other block type, so every text block is joined instead.
-             */
-            $text = collect($response->json('content') ?? [])
-                ->where('type', 'text')
-                ->pluck('text')
-                ->implode('');
-
-            $text = trim($text);
+            $text = trim((string) $response->json('choices.0.message.content'));
 
             return $text !== '' ? $text : null;
         } catch (\Throwable $e) {
-            Log::warning('Claude unreachable', ['message' => $e->getMessage()]);
+            Log::warning('OpenAI unreachable', ['message' => $e->getMessage()]);
 
             return null;
         }
     }
 
     /**
-     * Guard against a rewrite that quietly dropped or altered the money.
+     * Guard against a rewrite that quietly dropped, altered or invented money.
      *
      * Every naira figure in the engine's answer must survive into the rewrite,
      * and the rewrite must not introduce one that was never there. This is the
@@ -207,7 +209,7 @@ class ClaudeService
 
         foreach ($before as $figure) {
             if (! in_array($figure, $after, true)) {
-                Log::info('Claude rewrite dropped a figure; using engine wording', ['figure' => $figure]);
+                Log::info('OpenAI rewrite dropped a figure; using engine wording', ['figure' => $figure]);
 
                 return false;
             }
@@ -217,7 +219,7 @@ class ClaudeService
         // engine never authorised, presented in the engine's voice.
         foreach ($after as $figure) {
             if (! in_array($figure, $before, true)) {
-                Log::warning('Claude rewrite invented a figure; using engine wording', ['figure' => $figure]);
+                Log::warning('OpenAI rewrite invented a figure; using engine wording', ['figure' => $figure]);
 
                 return false;
             }

@@ -31,9 +31,9 @@ use App\Models\User;
  *     traces to a transaction or a price report.
  *   · A hallucinated sentence is embarrassing; a hallucinated naira figure is
  *     money somebody does not have.
- *   · If Anthropic is slow, down or unconfigured, the product still answers.
+ *   · If OpenAI is slow, down or unconfigured, the product still answers.
  *
- * Where a language model genuinely helps is PHRASING. ClaudeService::rephrase()
+ * Where a language model genuinely helps is PHRASING. OpenAiService::rephrase()
  * is handed the finished answer and the finished figures and asked to say it
  * more naturally — it is never given the question, so it cannot decide
  * anything. That ordering is the whole safety argument.
@@ -98,7 +98,7 @@ class CoachService
         private BudgetService $budgets,
         private PriceService $prices,
         private TradeoffService $tradeoffs,
-        private ClaudeService $ai,
+        private OpenAiService $ai,
     ) {}
 
     /* ---------------- entity extraction ---------------- */
@@ -807,8 +807,20 @@ class CoachService
     /**
      * The plain-language monthly summary — also the written explanation on a
      * dashboard otherwise made entirely of numbers.
+     *
+     * `$phrase` defaults to FALSE, and that default is the point.
+     *
+     * This used to call the model unconditionally to fill `text`, while its
+     * only caller — answerSummary() — read `engine` and dropped `text` on the
+     * floor. Every "how are my finances?" therefore made two billed requests
+     * and used one: this one, discarded, and then the real seam in phrase().
+     * Invisible with no key configured, and pure waste with one.
+     *
+     * Answers go through ONE seam, phrase(), which is also the only place the
+     * figure guard runs. A caller that genuinely wants prose here and is not
+     * going on to phrase() can ask for it.
      */
-    public function summarise(User $user, ?int $asOf = null): array
+    public function summarise(User $user, ?int $asOf = null, bool $phrase = false): array
     {
         $ctx = $this->context($user, $asOf);
         $p   = $ctx['position'];
@@ -842,20 +854,34 @@ class CoachService
             if ($alloc <= 0) {
                 continue;
             }
-            $ratio = ($ctx['spend'][$id] ?? 0) / $alloc;
+            $spent = $ctx['spend'][$id] ?? 0;
+            $ratio = $spent / $alloc;
             if ($ratio > 0.85 && (!$hot || $ratio > $hot['ratio'])) {
-                $hot = ['id' => $id, 'ratio' => $ratio];
+                $hot = ['id' => $id, 'ratio' => $ratio, 'spent' => $spent, 'alloc' => $alloc];
             }
         }
         if ($hot) {
-            $bits[] = sprintf('%s is the line to watch — %d%% of it is gone.',
-                self::label($hot['id']), round($hot['ratio'] * 100));
+            /*
+             * Past a point a percentage stops being information.
+             *
+             * A small allocation blown several times over produced "Social &
+             * Outings is the line to watch — 777% of it is gone", which is
+             * exactly true and reads as a rendering fault. Two naira figures
+             * say the same thing and can be acted on.
+             */
+            $bits[] = $hot['ratio'] > 1.5
+                ? sprintf('%s is the line to watch — %s spent against a %s budget.',
+                    self::label($hot['id']), Money::fmt($hot['spent']), Money::fmt($hot['alloc']))
+                : sprintf('%s is the line to watch — %d%% of it is gone.',
+                    self::label($hot['id']), round($hot['ratio'] * 100));
         }
 
         $engineText = implode(' ', $bits);
 
-        return [
-            'text'    => $this->ai->summarise([
+        $text = $engineText;
+
+        if ($phrase) {
+            $text = $this->ai->summarise([
                 'month'        => date('F Y', $ctx['asOf']),
                 'feasible'     => $b->feasible,
                 'income'       => Money::fmt($b->income),
@@ -863,7 +889,11 @@ class CoachService
                 'spent'        => Money::fmt($p['spent']),
                 'safe_per_day' => Money::fmt($p['per_day']),
                 'pace'         => $p['pace_label'],
-            ]) ?? $engineText,
+            ]) ?? $engineText;
+        }
+
+        return [
+            'text'     => $text,
             'engine'   => $engineText,
             'greeting' => 'Here is where you stand, ' . explode(' ', $user->name)[0] . '.',
         ];
