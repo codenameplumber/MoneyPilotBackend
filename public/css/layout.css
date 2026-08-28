@@ -323,6 +323,48 @@
 .compare-verdict b { font-family: var(--mono); }
 
 /* --- Mechanism cards ----------------------------------------------------- */
+/* --- TruePrice band -------------------------------------------------------
+   Copy and evidence on the left, the four defences on the right.
+
+   This grid lived as an inline `grid-template-columns:.85fr 1.15fr` on the
+   element, which is why it was the one band on the page that never responded:
+   an inline style outranks every stylesheet rule, so no media query could
+   reach it. At 390px it still resolved to two columns of 148px and 173px --
+   a four-line heading, and the defence cards running off the right edge.
+
+   Collapses at 980px to match .hero-grid, so the page folds in one rhythm
+   rather than at an arbitrary new number.                                   */
+.tp-grid {
+  display: grid;
+  grid-template-columns: .85fr 1.15fr;
+  gap: 52px;
+  align-items: start;
+}
+@media (max-width: 1120px) { .tp-grid { gap: 36px; } }
+@media (max-width: 980px)  { .tp-grid { grid-template-columns: 1fr; gap: 34px; } }
+
+/* The defences. Stacked beside the copy on desktop; once the band is one
+   column they have the full width, and four full-width boxes on a tablet is
+   a lot of empty line — so they pair up until the phone. */
+.tp-mechs { display: grid; gap: 12px; }
+@media (max-width: 980px) and (min-width: 640px) {
+  .tp-mechs { grid-template-columns: 1fr 1fr; }
+}
+
+/* Once stacked, the portrait spans the full band. At 3:2 that is a 470px slab
+   on a tablet -- half a screen of photograph in front of the argument it is
+   illustrating. Cap it into a band instead; the image is object-fit: cover, so
+   it crops rather than distorts. */
+@media (max-width: 980px) {
+  .tp-grid .photo .media {
+    aspect-ratio: auto;
+    height: clamp(180px, 30vw, 260px);
+  }
+  /* Crop toward the top of the frame. A centred crop on a portrait takes the
+     band across the subject's eyes, which is the one place it must not. */
+  .tp-grid .photo .media > img { object-position: 50% 28%; }
+}
+
 .mech {
   display: grid; grid-template-columns: auto 1fr; gap: 4px 14px;
   padding: 20px;
