@@ -425,7 +425,10 @@
 <div class="invert">
   <section class="section" id="trueprice">
     <div class="wrapper">
-      <div class="grid" style="grid-template-columns:.85fr 1.15fr;gap:52px;align-items:start">
+      {{-- The columns are a class, not an inline style. Inline beats every
+           stylesheet rule, so hardcoding them here is what kept this the one
+           band on the page that never collapsed on a phone. --}}
+      <div class="tp-grid">
         <div class="col g-16">
           <span class="eyebrow eyebrow-accent">TruePrice</span>
           <p class="pull">Anyone can collect prices. Making them trustworthy is the hard part.</p>
@@ -458,7 +461,7 @@
           </div>
         </div>
 
-        <div class="grid" style="gap:12px">
+        <div class="tp-mechs">
           <div class="mech">
             <span class="mech-ic"><i data-icon="shield" class="i i-sm"></i></span>
             <h3>Weighted median, never a mean</h3>

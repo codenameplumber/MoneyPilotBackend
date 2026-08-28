@@ -202,9 +202,21 @@ const signin = await evalJs(`(async () => {
   btn.click();
   return { ok: true, livewire: typeof window.Livewire };
 })()`);
-await sleep(4000);
+/* Poll for the outcome rather than sleeping a fixed 4s and hoping.
 
-const landed = await evalJs('location.pathname');
+   `php artisan serve` is single-threaded, and the public pass immediately
+   before this force-loads seven full-size homepage photographs — so the
+   sign-in POST can sit in the queue behind them. A fixed wait turned that into
+   an intermittent "SIGN-IN FAILED" that looked like a broken login form and
+   was nothing of the kind. */
+let landed = '/login';
+for (let i = 0; i < 40; i++) {
+  await sleep(400);
+  landed = await evalJs('location.pathname');
+  if (landed !== '/login') break;
+  // A real credential error appears immediately; stop waiting for it to pass.
+  if (await evalJs(`!!document.querySelector('.err')`)) break;
+}
 
 /* Fail loudly. Silently screenshotting the login page under every screen's
    name is worse than no screenshots — and the most likely cause is the login

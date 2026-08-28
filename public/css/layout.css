@@ -91,6 +91,38 @@
 .site-nav a:hover { color: var(--text); text-decoration: none; }
 @media (max-width: 860px) { .site-nav { display: none; } }
 
+/* --- Header at phone widths -----------------------------------------------
+   The bar is a nowrap flex row that needed 409px before it fit, so on a 360px
+   phone "Get started" sat 49px past the right edge and rendered as "Get". The
+   buttons were not shrinking -- .btn is white-space: nowrap -- the row was
+   simply overflowing and being clipped by the sticky header.
+
+   flex: none states the intent (a control is never squeezed to fit); the rest
+   is reclaiming width from padding, gap and type before anything is dropped. */
+.site-head-in > * { flex: none; }
+.site-head-in .brand { min-width: 0; }
+
+@media (max-width: 520px) {
+  .site-head-in { gap: 10px; padding: 10px 14px; }
+  .brand { gap: 7px; }
+  .brand-name { font-size: var(--t-base); }
+  .site-head-in .btn-sm { padding: 7px 10px; }
+}
+
+/* Below this the row still will not fit, and something has to give. The theme
+   toggle is the one control the page can lose: it is an override of a
+   preference the OS already supplies, whereas both Sign in and Get started are
+   destinations a visitor came here for. */
+@media (max-width: 400px) {
+  .site-head-in [data-theme-toggle] { display: none; }
+}
+
+/* Narrower than any current handset, but the bar should not be the thing that
+   breaks first if one turns up. */
+@media (max-width: 340px) {
+  .site-head-in { gap: 8px; padding: 10px 11px; }
+}
+
 .brand { display: flex; align-items: center; gap: 9px; color: inherit; }
 .brand:hover { text-decoration: none; }
 .brand-mark {
@@ -323,6 +355,48 @@
 .compare-verdict b { font-family: var(--mono); }
 
 /* --- Mechanism cards ----------------------------------------------------- */
+/* --- TruePrice band -------------------------------------------------------
+   Copy and evidence on the left, the four defences on the right.
+
+   This grid lived as an inline `grid-template-columns:.85fr 1.15fr` on the
+   element, which is why it was the one band on the page that never responded:
+   an inline style outranks every stylesheet rule, so no media query could
+   reach it. At 390px it still resolved to two columns of 148px and 173px --
+   a four-line heading, and the defence cards running off the right edge.
+
+   Collapses at 980px to match .hero-grid, so the page folds in one rhythm
+   rather than at an arbitrary new number.                                   */
+.tp-grid {
+  display: grid;
+  grid-template-columns: .85fr 1.15fr;
+  gap: 52px;
+  align-items: start;
+}
+@media (max-width: 1120px) { .tp-grid { gap: 36px; } }
+@media (max-width: 980px)  { .tp-grid { grid-template-columns: 1fr; gap: 34px; } }
+
+/* The defences. Stacked beside the copy on desktop; once the band is one
+   column they have the full width, and four full-width boxes on a tablet is
+   a lot of empty line — so they pair up until the phone. */
+.tp-mechs { display: grid; gap: 12px; }
+@media (max-width: 980px) and (min-width: 640px) {
+  .tp-mechs { grid-template-columns: 1fr 1fr; }
+}
+
+/* Once stacked, the portrait spans the full band. At 3:2 that is a 470px slab
+   on a tablet -- half a screen of photograph in front of the argument it is
+   illustrating. Cap it into a band instead; the image is object-fit: cover, so
+   it crops rather than distorts. */
+@media (max-width: 980px) {
+  .tp-grid .photo .media {
+    aspect-ratio: auto;
+    height: clamp(180px, 30vw, 260px);
+  }
+  /* Crop toward the top of the frame. A centred crop on a portrait takes the
+     band across the subject's eyes, which is the one place it must not. */
+  .tp-grid .photo .media > img { object-position: 50% 28%; }
+}
+
 .mech {
   display: grid; grid-template-columns: auto 1fr; gap: 4px 14px;
   padding: 20px;
