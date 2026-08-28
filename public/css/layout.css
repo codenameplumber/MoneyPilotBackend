@@ -91,6 +91,38 @@
 .site-nav a:hover { color: var(--text); text-decoration: none; }
 @media (max-width: 860px) { .site-nav { display: none; } }
 
+/* --- Header at phone widths -----------------------------------------------
+   The bar is a nowrap flex row that needed 409px before it fit, so on a 360px
+   phone "Get started" sat 49px past the right edge and rendered as "Get". The
+   buttons were not shrinking -- .btn is white-space: nowrap -- the row was
+   simply overflowing and being clipped by the sticky header.
+
+   flex: none states the intent (a control is never squeezed to fit); the rest
+   is reclaiming width from padding, gap and type before anything is dropped. */
+.site-head-in > * { flex: none; }
+.site-head-in .brand { min-width: 0; }
+
+@media (max-width: 520px) {
+  .site-head-in { gap: 10px; padding: 10px 14px; }
+  .brand { gap: 7px; }
+  .brand-name { font-size: var(--t-base); }
+  .site-head-in .btn-sm { padding: 7px 10px; }
+}
+
+/* Below this the row still will not fit, and something has to give. The theme
+   toggle is the one control the page can lose: it is an override of a
+   preference the OS already supplies, whereas both Sign in and Get started are
+   destinations a visitor came here for. */
+@media (max-width: 400px) {
+  .site-head-in [data-theme-toggle] { display: none; }
+}
+
+/* Narrower than any current handset, but the bar should not be the thing that
+   breaks first if one turns up. */
+@media (max-width: 340px) {
+  .site-head-in { gap: 8px; padding: 10px 11px; }
+}
+
 .brand { display: flex; align-items: center; gap: 9px; color: inherit; }
 .brand:hover { text-decoration: none; }
 .brand-mark {
